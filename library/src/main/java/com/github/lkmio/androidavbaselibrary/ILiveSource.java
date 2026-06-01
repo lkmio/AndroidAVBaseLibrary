@@ -56,6 +56,8 @@ public interface ILiveSource {
 
     String getCameraId();
 
+    AVCodec getVideoCodec();
+
     boolean switchCamera(String cameraId);
 
     interface OnDeviceErrorListener {

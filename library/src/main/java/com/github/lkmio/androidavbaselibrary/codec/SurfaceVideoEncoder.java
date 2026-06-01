@@ -2,12 +2,13 @@ package com.github.lkmio.androidavbaselibrary.codec;
 
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
-import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.os.Bundle;
 import android.view.Surface;
 
 import com.github.lkmio.androidavbaselibrary.Packet;
+import com.github.lkmio.androidavbaselibrary.AVMediaType;
+import com.github.lkmio.androidavbaselibrary.Track;
 
 import java.nio.ByteBuffer;
 
@@ -34,6 +35,12 @@ public class SurfaceVideoEncoder {
     private boolean mInputEosSignaled = false;
 
     private boolean mOutputEosReached = false;
+
+    private com.github.lkmio.androidavbaselibrary.AVCodec mTargetCodec = com.github.lkmio.androidavbaselibrary.AVCodec.NONE;
+    
+    private int mWidth;
+    private int mHeight;
+    private Track mTrack;
 
     public void start(String mimeType, String codecName, int width, int height, int fps, int bitRate, boolean dynamicBitRate, int keyFrameIntervalSec) throws Exception {
         synchronized (mStateLock) {
@@ -70,6 +77,17 @@ public class SurfaceVideoEncoder {
                 mOutputFormat = mCodec.getOutputFormat();
                 mInputEosSignaled = false;
                 mOutputEosReached = false;
+                mWidth = width;
+                mHeight = height;
+                mTrack = null;
+                
+                if (MediaFormat.MIMETYPE_VIDEO_HEVC.equals(mimeType)) {
+                    mTargetCodec = com.github.lkmio.androidavbaselibrary.AVCodec.H265;
+                } else if (MediaFormat.MIMETYPE_VIDEO_AVC.equals(mimeType)) {
+                    mTargetCodec = com.github.lkmio.androidavbaselibrary.AVCodec.H264;
+                } else {
+                    mTargetCodec = com.github.lkmio.androidavbaselibrary.AVCodec.NONE;
+                }
             } catch (Exception e) {
                 releaseInternal();
                 throw new IllegalStateException("start surface video encoder failed", e);
@@ -124,6 +142,12 @@ public class SurfaceVideoEncoder {
         }
     }
 
+    public Track getTrack() {
+        synchronized (mStateLock) {
+            return mTrack;
+        }
+    }
+
     public void signalEndOfInputStream() {
         synchronized (mStateLock) {
             if (mCodec == null || mInputEosSignaled) {
@@ -167,12 +191,21 @@ public class SurfaceVideoEncoder {
                 dataBuffer.put(sourceBuffer);
                 dataBuffer.flip();
                 mReusablePacket.data = dataBuffer;
+                mReusablePacket.codec = mTargetCodec;
                 mReusablePacket.presentationTimeUs = mBufferInfo.presentationTimeUs;
                 mReusablePacket.flags = mBufferInfo.flags;
                 outBufferInfo.set(0, mBufferInfo.size, mBufferInfo.presentationTimeUs, mBufferInfo.flags);
                 if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
                     mCodecConfigData = new byte[dataBuffer.remaining()];
                     dataBuffer.duplicate().get(mCodecConfigData);
+                    
+                    mTrack = new Track();
+                    mTrack.codec = mTargetCodec;
+                    mTrack.mediaType = AVMediaType.AV_MEDIA_TYPE_VIDEO;
+                    mTrack.mediaFormat = mOutputFormat;
+                    mTrack.width = mWidth;
+                    mTrack.height = mHeight;
+                    mTrack.extraData = mCodecConfigData;
                 }
                 boolean eos = (mBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
                 mCodec.releaseOutputBuffer(outputIndex, false);

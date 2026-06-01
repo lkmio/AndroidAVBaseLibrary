@@ -81,6 +81,18 @@ public class LiveSource implements ILiveSource {
         mBuilderCameraInfos = builder.mCameraInfos;
     }
 
+    public AVCodec getVideoCodec() {
+        if (mVideoConfig != null) {
+            String mimeType = mVideoConfig.videoMimeType;
+            if (android.media.MediaFormat.MIMETYPE_VIDEO_HEVC.equals(mimeType)) {
+                return AVCodec.H265;
+            } else if (android.media.MediaFormat.MIMETYPE_VIDEO_AVC.equals(mimeType)) {
+                return AVCodec.H264;
+            }
+        }
+        return AVCodec.NONE;
+    }
+
     public static Builder builder(Context context) {
         return new Builder(context);
     }

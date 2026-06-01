@@ -38,8 +38,8 @@ public class RecordMP4Sink extends StreamSinkImpl {
         void onSegment(String path);
     }
 
-    public RecordMP4Sink(OnSegmentHandler handler, int segmentDurationSeconds) {
-        super(AVCodec.AAC, AVCodec.H264);
+    public RecordMP4Sink(AVCodec videoCodec, OnSegmentHandler handler, int segmentDurationSeconds) {
+        super(AVCodec.AAC, videoCodec);
         if (handler == null) {
             throw new IllegalArgumentException("handler == null");
         }
@@ -50,7 +50,7 @@ public class RecordMP4Sink extends StreamSinkImpl {
 
     @Override
     public void onPacket(Packet packet) {
-        assert packet.codec == AVCodec.H264 || packet.codec == AVCodec.AAC;
+        assert packet.codec == mSpecifyVideoCodec || packet.codec == AVCodec.AAC;
         if (mMuxer == null || !mMuxer.isStarted()) {
             return;
         }
@@ -61,7 +61,7 @@ public class RecordMP4Sink extends StreamSinkImpl {
             data.position(0);
             data.limit(packet.data.limit());
 
-            if (packet.codec == AVCodec.H264) {
+            if (packet.codec == mSpecifyVideoCodec) {
                 mMuxer.writeVideoSampleData(data, bufferInfo);
             } else if (packet.codec == AVCodec.AAC) {
                 mMuxer.writeAudioSampleData(data, bufferInfo);
@@ -70,12 +70,12 @@ public class RecordMP4Sink extends StreamSinkImpl {
             }
 
             if (mMuxer.getDurationSeconds() >= mSegmentDurationSeconds) {
-                if (packet.codec == AVCodec.H264) {
+                if (packet.codec == mSpecifyVideoCodec) {
                     rollSegmentLocked();
                 } else {
                     mWaitingNextVideoBoundary = true;
                 }
-            } else if (mWaitingNextVideoBoundary && packet.codec == AVCodec.H264) {
+            } else if (mWaitingNextVideoBoundary && packet.codec == mSpecifyVideoCodec) {
                 rollSegmentLocked();
             }
         }

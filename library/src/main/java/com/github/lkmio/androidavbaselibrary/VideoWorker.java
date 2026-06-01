@@ -311,7 +311,7 @@ public class VideoWorker implements PreprocessSurfaceTexture.OnFrameAvailableLis
             }
 
             AVCodec[] avCodecs = mDemandCallback.needPacket();
-            boolean needVideoPacket = hasVideoEncoderDemand(avCodecs);
+            boolean needVideoPacket = avCodecs != null && avCodecs.length > 0;
             boolean needVideo = mDemandCallback.needFrame() || needVideoPacket;
 
             if (!needVideo) {
@@ -373,7 +373,7 @@ public class VideoWorker implements PreprocessSurfaceTexture.OnFrameAvailableLis
 
                 if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
                     if (!mVideoTrackReported) {
-                        mOutputCallback.onTrack(buildVideoTrack(packet.data));
+                        mOutputCallback.onTrack(mSurfaceVideoEncoder.getTrack());
                         mVideoTrackReported = true;
                     }
                     continue;
@@ -395,7 +395,6 @@ public class VideoWorker implements PreprocessSurfaceTexture.OnFrameAvailableLis
 //                }
                 mLastEncodedPresentationTimeUs = presentationTimeUs;
 
-                packet.codec = AVCodec.H264;
                 packet.presentationTimeUs = presentationTimeUs;
                 packet.flags = bufferInfo.flags;
                 packet.duration = deltaUs >= 0
@@ -507,18 +506,6 @@ public class VideoWorker implements PreprocessSurfaceTexture.OnFrameAvailableLis
         mVideoTrackReported = false;
     }
 
-    private boolean hasVideoEncoderDemand(AVCodec[] avCodecs) {
-        if (avCodecs == null || avCodecs.length == 0) {
-            return false;
-        }
-        for (AVCodec codec : avCodecs) {
-            if (codec == AVCodec.H264) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private void renderFrameToVideoEncoder(Frame textureFrame) {
         if (mVideoEncodeEglBase == null || mTexture2DDrawer == null) {
             return;
@@ -592,23 +579,5 @@ public class VideoWorker implements PreprocessSurfaceTexture.OnFrameAvailableLis
             mPreprocessSurfaceTexture.release();
             mPreprocessSurfaceTexture = null;
         }
-    }
-
-    private Track buildVideoTrack(ByteBuffer codecConfigBuffer) {
-        Track track = new Track();
-        track.codec = AVCodec.H264;
-        track.mediaType = AVMediaType.AV_MEDIA_TYPE_VIDEO;
-        track.mediaFormat = mSurfaceVideoEncoder != null ? mSurfaceVideoEncoder.getMediaFormat() : null;
-        track.width = getOutputWidth();
-        track.height = getOutputHeight();
-
-        if (codecConfigBuffer != null) {
-            ByteBuffer duplicate = codecConfigBuffer.duplicate();
-            track.extraData = new byte[duplicate.remaining()];
-            duplicate.get(track.extraData);
-        } else {
-            track.extraData = mSurfaceVideoEncoder != null ? mSurfaceVideoEncoder.getExtraData() : null;
-        }
-        return track;
     }
 }

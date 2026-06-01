@@ -41,8 +41,8 @@ public class RTMPStreamSink extends StreamSinkImpl {
     private long mCurrentVideoPtsUs = 0L;
     private long mCurrentAudioPtsUs = 0L;
 
-    public RTMPStreamSink(String url, Listener listener) {
-        super(AVCodec.AAC, AVCodec.H264);
+    public RTMPStreamSink(AVCodec videoCodec, String url, Listener listener) {
+        super(AVCodec.AAC, videoCodec);
         if (url == null || url.trim().isEmpty()) {
             throw new IllegalArgumentException("url is empty");
         }
@@ -97,8 +97,8 @@ public class RTMPStreamSink extends StreamSinkImpl {
         });
     }
 
-    public RTMPStreamSink(String url) {
-        this(url, null);
+    public RTMPStreamSink(AVCodec videoCodec, String url) {
+        this(videoCodec, url, null);
     }
 
     public void setListener(Listener listener) {
@@ -196,7 +196,7 @@ public class RTMPStreamSink extends StreamSinkImpl {
         ByteBuffer data = packet.data.duplicate();
         data.position(0);
         data.limit(packet.data.limit());
-        if (packet.codec == AVCodec.H264) {
+        if (packet.codec == mSpecifyVideoCodec) {
             mRtmpClient.sendVideo(data, bufferInfo);
         } else if (packet.codec == AVCodec.AAC) {
             mRtmpClient.sendAudio(data, bufferInfo);
@@ -268,7 +268,7 @@ public class RTMPStreamSink extends StreamSinkImpl {
                 mBasePtsUs = packet.presentationTimeUs;
             }
             long ptsUs = Math.max(0L, packet.presentationTimeUs - mBasePtsUs);
-            if (packet.codec == AVCodec.H264) {
+            if (packet.codec == mSpecifyVideoCodec) {
                 mCurrentVideoPtsUs = ptsUs;
             } else {
                 mCurrentAudioPtsUs = ptsUs;
@@ -277,7 +277,7 @@ public class RTMPStreamSink extends StreamSinkImpl {
         }
 
         long ptsUs;
-        if (packet.codec == AVCodec.H264) {
+        if (packet.codec == mSpecifyVideoCodec) {
             ptsUs = mCurrentVideoPtsUs;
             mCurrentVideoPtsUs += Math.max(1L, packet.duration) * 1000L;
         } else {

@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
 
         List<CameraUtils.CameraInfo> overrides = new java.util.ArrayList<>();
         overrides.add(new CameraUtils.CameraInfo("", CameraMetadata.LENS_FACING_FRONT, 180, false, false));
-        sCameraCompatMap.put("DSJ-P8", overrides);
+        //sCameraCompatMap.put("", overrides);
     }
 
     private EglPreviewView mPreviewView;
@@ -323,7 +323,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         String dir = getExternalCacheDir().getAbsolutePath();
-        final RecordMP4Sink recordSink = new RecordMP4Sink(new RecordMP4Sink.OnSegmentHandler() {
+        final RecordMP4Sink recordSink = new RecordMP4Sink(mLiveSource.getVideoCodec(), new RecordMP4Sink.OnSegmentHandler() {
             @Override
             public String allocPath() {
                 return dir + "/record_" + System.currentTimeMillis() + ".mp4";
@@ -438,7 +438,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        final RTMPStreamSink sink = new RTMPStreamSink(url);
+        final RTMPStreamSink sink = new RTMPStreamSink(mLiveSource.getVideoCodec(), url);
         sink.setListener(new RTMPStreamSink.Listener() {
             @Override
             public void onConnectionStarted(String url) {
