@@ -127,6 +127,14 @@ public class VideoWorker implements PreprocessSurfaceTexture.OnFrameAvailableLis
         }
     }
 
+    public void removeAllOsd() {
+        mStaticOsds.clear();
+        mDynamicOsds.clear();
+        if (mPreprocessSurfaceTexture != null) {
+            mPreprocessSurfaceTexture.removeAllOsd();
+        }
+    }
+
     private ILiveSource.OnDeviceErrorListener mOnDeviceErrorListener;
 
     public void setOnDeviceErrorListener(ILiveSource.OnDeviceErrorListener listener) {

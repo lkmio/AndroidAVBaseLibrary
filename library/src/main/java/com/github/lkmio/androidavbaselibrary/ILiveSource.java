@@ -34,9 +34,15 @@ public interface ILiveSource {
 
     int addStaticWatermark(Bitmap bitmap, int gravity, Rect margin);
 
-    int addStaticWatermark(String text, int textSie, int color, int gravity, Rect margin);
+    int addStaticWatermark(String text, int textSize, int color, int gravity, Rect margin);
 
     int addDynamicTextWatermark(DynamicOSD osd, int textSize, int color, int gravity, Rect margin);
+
+    int addStaticWatermark(String targetCameraId, Integer targetFacing, Bitmap bitmap, int gravity, Rect margin);
+
+    int addStaticWatermark(String targetCameraId, Integer targetFacing, String text, int textSize, int color, int gravity, Rect margin);
+
+    int addDynamicTextWatermark(String targetCameraId, Integer targetFacing, DynamicOSD osd, int textSize, int color, int gravity, Rect margin);
 
     boolean removeWatermark(int index);
 

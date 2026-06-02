@@ -518,6 +518,17 @@ public class PreprocessSurfaceTexture implements SurfaceTexture.OnFrameAvailable
         }
     }
 
+    public void removeAllOsd() {
+        if (!mStaticOsdMap.isEmpty()) {
+            mStaticOsdMap.clear();
+            mStaticDirty = true;
+        }
+        if (!mDynamicOsdMap.isEmpty()) {
+            mDynamicOsdMap.clear();
+            mDynamicDirty = true;
+        }
+    }
+
     public void clearAllOsd() {
         mStaticOsdMap.clear();
         mDynamicOsdMap.clear();

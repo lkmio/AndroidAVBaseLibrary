@@ -261,6 +261,8 @@ public class MainActivity extends AppCompatActivity {
 
         mLiveSource = builder.build();
 
+        mLiveSource.addStaticWatermark(null, CameraCharacteristics.LENS_FACING_BACK, "后摄", 28, Color.WHITE, Gravity.BOTTOM | Gravity.START, new Rect(20, 0, 0, 80));
+        mLiveSource.addStaticWatermark(null, CameraCharacteristics.LENS_FACING_FRONT, "前摄", 28, Color.WHITE, Gravity.BOTTOM | Gravity.START, new Rect(20, 0, 0, 80));
         mLiveSource.addStaticWatermark("亮出你的剑 一板一眼", 28, Color.WHITE, Gravity.BOTTOM | Gravity.START, new Rect(20, 0, 0, 40));
         mLiveSource.addStaticWatermark("回归基本功 升级无尽", 28, Color.WHITE, Gravity.BOTTOM | Gravity.START, new Rect(20, 0, 0, 0));
         mLiveSource.addDynamicTextWatermark(new TimeOSD(), 28, Color.WHITE, Gravity.TOP | Gravity.START, new Rect(20, 0, 0, 0));

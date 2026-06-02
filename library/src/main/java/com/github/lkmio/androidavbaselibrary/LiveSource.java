@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import com.github.lkmio.androidavbaselibrary.watermark.WatermarkManager;
 
 public class LiveSource implements ILiveSource {
     private static final String TAG = "LiveSource";
@@ -67,13 +68,8 @@ public class LiveSource implements ILiveSource {
     private ByteBuffer mSnapshotBuffer;
     private Bitmap mSnapshotBitmap;
 
-    private final AtomicInteger mOsdIdGenerator = new AtomicInteger(1);
-
+    private final WatermarkManager mWatermarkManager = new WatermarkManager();
     private ILiveSource.OnDeviceErrorListener mOnDeviceErrorListener;
-
-    // 如果还没 start，先把用户设置的水印缓存起来
-    private final Map<Integer, OSD> mPendingStaticOsds = new ConcurrentHashMap<>();
-    private final Map<Integer, DynamicOSD> mPendingDynamicOsds = new ConcurrentHashMap<>();
 
     private LiveSource(Builder builder) {
         mAudioConfig = builder.buildAudioConfig();
@@ -548,6 +544,15 @@ public class LiveSource implements ILiveSource {
         return mVideoConfig.cameraId;
     }
 
+    private Integer getCurrentFacing() {
+        String currentCameraId = getCameraId();
+        if (currentCameraId != null) {
+            CameraUtils.CameraInfo info = resolveCameraInfo(mVideoConfig.context, currentCameraId, mBuilderCameraInfos);
+            return info.facing;
+        }
+        return null;
+    }
+
     @Override
     public boolean switchCamera(String cameraId) {
         if (mVideoWorker == null || cameraId == null) {
@@ -556,71 +561,56 @@ public class LiveSource implements ILiveSource {
         CameraUtils.CameraInfo info = resolveCameraInfo(mVideoConfig.context, cameraId, mBuilderCameraInfos);
         int[] size = new int[2];
         CameraUtils.resolveVideoSize(mVideoConfig.context, cameraId, mVideoConfig.width, mVideoConfig.height, size);
-        return mVideoWorker.switchCamera(cameraId, info.sensorOrientation, info.mirrorX, info.mirrorY, size[0], size[1]);
+        boolean switched = mVideoWorker.switchCamera(cameraId, info.sensorOrientation, info.mirrorX, info.mirrorY, size[0], size[1]);
+        if (switched) {
+            mWatermarkManager.syncToVideoWorker(mVideoWorker, cameraId, info.facing);
+        }
+        return switched;
     }
 
     @Override
     public int addStaticWatermark(Bitmap bitmap, int gravity, Rect margin) {
-        int id = mOsdIdGenerator.getAndIncrement();
-        OSD osd = new OSD();
-        osd.bitmap = bitmap;
-        osd.gravity = gravity;
-        if (margin != null) {
-            osd.margin.set(margin);
-        }
-        mPendingStaticOsds.put(id, osd);
-        if (mVideoWorker != null) {
-            mVideoWorker.addStaticOsd(id, osd);
-        }
-        return id;
+        return addStaticWatermark(null, null, bitmap, gravity, margin);
     }
 
     @Override
     public int addStaticWatermark(String text, int textSize, int color, int gravity, Rect margin) {
-        int id = mOsdIdGenerator.getAndIncrement();
-        OSD osd = new OSD();
-        osd.text = text;
-        osd.size = textSize;
-        osd.color = color;
-        osd.gravity = gravity;
-        if (margin != null) {
-            osd.margin.set(margin);
-        }
-
-        mPendingStaticOsds.put(id, osd);
-        if (mVideoWorker != null) {
-            mVideoWorker.addStaticOsd(id, osd);
-        }
-        return id;
+        return addStaticWatermark(null, null, text, textSize, color, gravity, margin);
     }
 
     @Override
     public int addDynamicTextWatermark(DynamicOSD osd, int textSize, int color, int gravity, Rect margin) {
-        osd.size = textSize;
-        osd.color = color;
-        osd.gravity = gravity;
-        if (margin != null) {
-            osd.margin.set(margin);
-        } else {
-            osd.margin.setEmpty();
-        }
-        int id = mOsdIdGenerator.getAndIncrement();
-        mPendingDynamicOsds.put(id, osd);
-        if (mVideoWorker != null) {
-            mVideoWorker.addDynamicOsd(id, osd);
-        }
+        return addDynamicTextWatermark(null, null, osd, textSize, color, gravity, margin);
+    }
+
+    @Override
+    public int addStaticWatermark(String targetCameraId, Integer targetFacing, Bitmap bitmap, int gravity, Rect margin) {
+        int id = mWatermarkManager.addStaticWatermark(targetCameraId, targetFacing, bitmap, gravity, margin);
+        mWatermarkManager.syncAddedOsd(id, mVideoWorker, getCameraId(), getCurrentFacing());
+        return id;
+    }
+
+    @Override
+    public int addStaticWatermark(String targetCameraId, Integer targetFacing, String text, int textSize, int color, int gravity, Rect margin) {
+        int id = mWatermarkManager.addStaticWatermark(targetCameraId, targetFacing, text, textSize, color, gravity, margin);
+        mWatermarkManager.syncAddedOsd(id, mVideoWorker, getCameraId(), getCurrentFacing());
+        return id;
+    }
+
+    @Override
+    public int addDynamicTextWatermark(String targetCameraId, Integer targetFacing, DynamicOSD osd, int textSize, int color, int gravity, Rect margin) {
+        int id = mWatermarkManager.addDynamicTextWatermark(targetCameraId, targetFacing, osd, textSize, color, gravity, margin);
+        mWatermarkManager.syncAddedOsd(id, mVideoWorker, getCameraId(), getCurrentFacing());
         return id;
     }
 
     @Override
     public boolean removeWatermark(int index) {
-        mPendingStaticOsds.remove(index);
-        mPendingDynamicOsds.remove(index);
-
-        if (mVideoWorker != null) {
+        boolean removed = mWatermarkManager.removeWatermark(index);
+        if (removed && mVideoWorker != null) {
             mVideoWorker.removeOsd(index);
         }
-        return true;
+        return removed;
     }
 
 
@@ -809,12 +799,7 @@ public class LiveSource implements ILiveSource {
                 }
         );
 
-        for (Map.Entry<Integer, OSD> entry : mPendingStaticOsds.entrySet()) {
-            mVideoWorker.addStaticOsd(entry.getKey(), entry.getValue());
-        }
-        for (Map.Entry<Integer, DynamicOSD> entry : mPendingDynamicOsds.entrySet()) {
-            mVideoWorker.addDynamicOsd(entry.getKey(), entry.getValue());
-        }
+        mWatermarkManager.syncToVideoWorker(mVideoWorker, mVideoConfig.cameraId, getCurrentFacing());
 
         if (mPendingCameraOpenListener != null) {
             mVideoWorker.setOnCameraOpenListener(mPendingCameraOpenListener);
