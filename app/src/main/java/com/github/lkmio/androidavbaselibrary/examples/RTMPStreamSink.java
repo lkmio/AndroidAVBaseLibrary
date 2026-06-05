@@ -164,6 +164,7 @@ public class RTMPStreamSink extends StreamSinkImpl {
         }
     }
 
+    @Override
     public void close() {
         synchronized (mLock) {
             if (mClosed) {

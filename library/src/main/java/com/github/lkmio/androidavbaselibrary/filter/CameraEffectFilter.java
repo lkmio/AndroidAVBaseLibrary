@@ -1,4 +1,4 @@
-package com.github.lkmio.androidavbaselibrary.fitler;
+package com.github.lkmio.androidavbaselibrary.filter;
 
 import android.graphics.Bitmap;
 import android.opengl.GLES11Ext;
@@ -273,18 +273,47 @@ public class CameraEffectFilter {
     }
 
     private int createProgram(String vertexSource, String fragmentSource) {
-        int vShader = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
-        GLES20.glShaderSource(vShader, vertexSource);
-        GLES20.glCompileShader(vShader);
-        int fShader = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER);
-        GLES20.glShaderSource(fShader, fragmentSource);
-        GLES20.glCompileShader(fShader);
+        int vShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexSource);
+        if (vShader == 0) {
+            android.util.Log.e(TAG, "Failed to compile vertex shader");
+            return 0;
+        }
+        int fShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentSource);
+        if (fShader == 0) {
+            android.util.Log.e(TAG, "Failed to compile fragment shader");
+            GLES20.glDeleteShader(vShader);
+            return 0;
+        }
         int program = GLES20.glCreateProgram();
         if (program != 0) {
             GLES20.glAttachShader(program, vShader);
             GLES20.glAttachShader(program, fShader);
             GLES20.glLinkProgram(program);
+            int[] linkStatus = new int[1];
+            GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, linkStatus, 0);
+            if (linkStatus[0] != GLES20.GL_TRUE) {
+                android.util.Log.e(TAG, "Failed to link program: " + GLES20.glGetProgramInfoLog(program));
+                GLES20.glDeleteProgram(program);
+                program = 0;
+            }
         }
+        GLES20.glDeleteShader(vShader);
+        GLES20.glDeleteShader(fShader);
         return program;
+    }
+
+    private int loadShader(int shaderType, String source) {
+        int shader = GLES20.glCreateShader(shaderType);
+        if (shader == 0) return 0;
+        GLES20.glShaderSource(shader, source);
+        GLES20.glCompileShader(shader);
+        int[] compiled = new int[1];
+        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
+        if (compiled[0] == 0) {
+            android.util.Log.e(TAG, "Could not compile shader " + shaderType + ": " + GLES20.glGetShaderInfoLog(shader));
+            GLES20.glDeleteShader(shader);
+            return 0;
+        }
+        return shader;
     }
 }

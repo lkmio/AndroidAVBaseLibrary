@@ -19,7 +19,7 @@ import com.github.lkmio.androidavbaselibrary.DynamicOSD;
 import com.github.lkmio.androidavbaselibrary.Frame;
 import com.github.lkmio.androidavbaselibrary.OSD;
 import com.github.lkmio.androidavbaselibrary.egl.EglBase;
-import com.github.lkmio.androidavbaselibrary.fitler.CameraEffectFilter;
+import com.github.lkmio.androidavbaselibrary.filter.CameraEffectFilter;
 import com.github.lkmio.androidavbaselibrary.utils.GlUtil;
 import com.github.lkmio.androidavbaselibrary.utils.OSDUtils;
 
@@ -41,7 +41,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PreprocessSurfaceTexture implements SurfaceTexture.OnFrameAvailableListener {
 
     private static final String TAG = "PreprocessSurface";
-    private static final int POOL_SIZE = 3; // 缓冲池大小，3个基本足够应付所有波?
+    private static final int POOL_SIZE = 3; // 缓冲池大小，3个基本足够应付所有波动
 
     private EglBase mRootEglBase;
     private EglBase mWorkerEglBase;
@@ -294,7 +294,7 @@ public class PreprocessSurfaceTexture implements SurfaceTexture.OnFrameAvailable
                 //return mReadyQueue.poll(100, java.util.concurrent.TimeUnit.MILLISECONDS);
             }
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Log.w(TAG, "getReadyFrame interrupted", e);
         }
 
         return null;
@@ -417,7 +417,7 @@ public class PreprocessSurfaceTexture implements SurfaceTexture.OnFrameAvailable
                 // }
             mLastFrameTimestampNs = timestamp;
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.w(TAG, "processFrame: updateTexImage failed", e);
             return;
         }
 
@@ -636,7 +636,7 @@ public class PreprocessSurfaceTexture implements SurfaceTexture.OnFrameAvailable
 
         int align = osd.gravity;
 
-        // X轴处?
+        // X轴处理
         if ((align & Gravity.LEFT) == Gravity.LEFT) {
             x = osd.margin.left;
         } else if ((align & Gravity.RIGHT) == Gravity.RIGHT) {
@@ -645,7 +645,7 @@ public class PreprocessSurfaceTexture implements SurfaceTexture.OnFrameAvailable
             x = (canvas.getWidth() - textWidth) / 2;
         }
 
-        // Y轴处? 注意 drawText 的 Y 是 baseline
+        // Y轴处理，注意 drawText 的 Y 是 baseline
         if ((align & Gravity.TOP) == Gravity.TOP) {
             y = osd.margin.top - metrics.top; // top 是负值
         } else if ((align & Gravity.BOTTOM) == Gravity.BOTTOM) {

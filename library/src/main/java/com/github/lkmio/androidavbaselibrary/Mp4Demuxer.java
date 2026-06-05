@@ -114,6 +114,10 @@ public class Mp4Demuxer {
      * @return 实际读取到的字节数；如果已经读到文件末尾，则返回 -1。
      */
     public int readSampleData() {
+        return readSampleData(0);
+    }
+
+    private int readSampleData(int retryCount) {
         try {
             mDirectBuffer.clear();
             int size = mExtractor.readSampleData(mDirectBuffer, 0);
@@ -122,11 +126,15 @@ public class Mp4Demuxer {
             }
             return size;
         } catch (IllegalArgumentException e) {
+            if (retryCount >= 3) {
+                Log.e(TAG, "DirectBuffer reallocation failed after " + retryCount + " retries, giving up.");
+                return -1;
+            }
             // 当遇到的帧体积异常庞大，超出了预估分配的缓冲池容量时，执行动态两倍扩容
             int newCapacity = mDirectBuffer.capacity() * 2;
             Log.w(TAG, "DirectBuffer capacity too small. Reallocating to " + newCapacity + " bytes.");
             mDirectBuffer = ByteBuffer.allocateDirect(newCapacity);
-            return readSampleData(); // 扩容后重试一次
+            return readSampleData(retryCount + 1);
         }
     }
 

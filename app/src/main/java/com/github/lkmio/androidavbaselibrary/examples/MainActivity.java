@@ -247,7 +247,7 @@ public class MainActivity extends AppCompatActivity {
 
         LiveSource.Builder builder = LiveSource.builder(this)
                 .setCameraId(selected.cameraId)
-                .setVideoWith(1280)
+                .setVideoWidth(1280)
                 .setVideoHeight(720)
                 .setVideoCodec(AVCodec.H265)
                 .setFPS(25);

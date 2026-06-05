@@ -6,6 +6,7 @@ import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 import android.view.WindowManager;
@@ -73,7 +74,7 @@ public class CameraUtils {
                 }
             }
         } catch (CameraAccessException e) {
-            e.printStackTrace();
+            Log.w("CameraUtils", "getCameraInfoList failed", e);
         }
         return cameraInfoList;
     }
@@ -106,7 +107,7 @@ public class CameraUtils {
             }
             return Arrays.asList(outputSizes);
         } catch (CameraAccessException e) {
-            e.printStackTrace();
+            Log.w("CameraUtils", "getSupportedResolutions failed", e);
             return Collections.emptyList();
         }
     }
@@ -125,7 +126,7 @@ public class CameraUtils {
         try {
             return cameraManager.getCameraIdList().length;
         } catch (CameraAccessException e) {
-            e.printStackTrace();
+            Log.w("CameraUtils", "getCameraCount failed", e);
             return 0;
         }
     }
@@ -179,7 +180,7 @@ public class CameraUtils {
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
             return characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         } catch (CameraAccessException e) {
-            e.printStackTrace();
+            Log.w("CameraUtils", "getSensorOrientation failed", e);
         }
         return 0;
     }

@@ -7,5 +7,9 @@ public enum AVCodec {
     G711A,
     G711U,
     AAC,
-    OPUS,
+    OPUS;
+
+    public boolean isVideo() {
+        return this == H264 || this == H265;
+    }
 }

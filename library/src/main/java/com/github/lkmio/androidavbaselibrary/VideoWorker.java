@@ -9,7 +9,7 @@ import com.github.lkmio.androidavbaselibrary.camera.Camera2Session;
 import com.github.lkmio.androidavbaselibrary.camera.PreprocessSurfaceTexture;
 import com.github.lkmio.androidavbaselibrary.codec.SurfaceVideoEncoder;
 import com.github.lkmio.androidavbaselibrary.egl.EglBase;
-import com.github.lkmio.androidavbaselibrary.fitler.Texture2DDrawer;
+import com.github.lkmio.androidavbaselibrary.filter.Texture2DDrawer;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -352,14 +352,14 @@ public class VideoWorker implements PreprocessSurfaceTexture.OnFrameAvailableLis
                 }
                 continue;
             } else if (videoEncoderStartFailed) {
-                // 音频编码器启动失败, 不再重试
+                // 视频编码器启动失败, 不再重试
                 continue;
             }
 
             try {
                 ensureVideoEncoderStarted();
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e("VideoWorker", "start video encoder failed", e);
                 videoEncoderStartFailed = true;
                 releaseVideoEncoder();
                 continue;

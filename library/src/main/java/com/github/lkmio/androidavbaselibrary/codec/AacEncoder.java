@@ -1,6 +1,5 @@
 package com.github.lkmio.androidavbaselibrary.codec;
 
-import android.content.Context;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
@@ -41,7 +40,7 @@ public class AacEncoder implements AudioEncoder {
             start(mSampleRate, mChannelCount, DEFAULT_BIT_RATE);
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.w(TAG, "start AAC encoder failed", e);
         }
 
         return false;

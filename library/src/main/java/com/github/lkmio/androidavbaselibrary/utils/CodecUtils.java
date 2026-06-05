@@ -2,6 +2,7 @@ package com.github.lkmio.androidavbaselibrary.utils;
 
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
+import android.util.Log;
 import android.os.Build;
 
 import java.util.ArrayList;
@@ -102,7 +103,7 @@ public class CodecUtils {
                         }
                     } catch (IllegalArgumentException e) {
                         // This can happen if the codec is not fully supported.
-                        e.printStackTrace();
+                        Log.w("CodecUtils", "getCapabilitiesForType failed for " + codecInfo.getName(), e);
                     }
                     codecList.add(info);
                 }

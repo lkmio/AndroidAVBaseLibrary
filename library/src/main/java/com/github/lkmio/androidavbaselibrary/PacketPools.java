@@ -32,7 +32,7 @@ public final class PacketPools {
         if (packet == null) {
             return;
         }
-        if (packet.codec == AVCodec.H264) {
+        if (packet.codec.isVideo()) {
             if (packet.isVideoKeyFrame()) {
                 VIDEO_KEY_POOL.put(packet);
             } else {

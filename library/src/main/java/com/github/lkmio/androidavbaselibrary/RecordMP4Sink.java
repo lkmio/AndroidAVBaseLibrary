@@ -32,6 +32,8 @@ public class RecordMP4Sink extends StreamSinkImpl {
 
     private boolean mWaitingNextVideoBoundary = false;
 
+    private volatile boolean mNeedKeyFrame = true;
+
     public interface OnSegmentHandler {
         String allocPath();
 
@@ -119,9 +121,14 @@ public class RecordMP4Sink extends StreamSinkImpl {
 
     @Override
     public boolean needVideoKeyFrame() {
-        return true;
+        if (mNeedKeyFrame) {
+            mNeedKeyFrame = false;
+            return true;
+        }
+        return false;
     }
 
+    @Override
     public void close() {
         synchronized (mLock) {
             closeCurrentSegmentLocked();
@@ -164,6 +171,7 @@ public class RecordMP4Sink extends StreamSinkImpl {
             mCurrentAudioPtsUs = 0L;
             mSegmentBasePtsUs = INVALID_PTS_US;
             mWaitingNextVideoBoundary = false;
+            mNeedKeyFrame = true;
         } catch (IOException e) {
             Log.w(TAG, "create muxer failed, path=" + path, e);
         } catch (Exception e) {
@@ -185,7 +193,7 @@ public class RecordMP4Sink extends StreamSinkImpl {
                 mSegmentBasePtsUs = packet.presentationTimeUs;
             }
             long ptsUs = Math.max(0L, packet.presentationTimeUs - mSegmentBasePtsUs);
-            if (packet.codec == AVCodec.H264) {
+            if (packet.codec.isVideo()) {
                 mCurrentVideoPtsUs = ptsUs;
             } else {
                 mCurrentAudioPtsUs = ptsUs;
@@ -194,7 +202,7 @@ public class RecordMP4Sink extends StreamSinkImpl {
         }
 
         long ptsUs;
-        if (packet.codec == AVCodec.H264) {
+        if (packet.codec.isVideo()) {
             ptsUs = mCurrentVideoPtsUs;
             mCurrentVideoPtsUs += Math.max(1L, packet.duration) * 1000L;
         } else {

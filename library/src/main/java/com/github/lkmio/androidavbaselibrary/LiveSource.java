@@ -6,10 +6,8 @@ import android.graphics.Rect;
 import android.hardware.camera2.CameraCharacteristics;
 import android.media.MediaRecorder;
 import android.util.Log;
-import android.util.Size;
 
 import com.github.lkmio.androidavbaselibrary.camera.Camera2Session;
-import com.github.lkmio.androidavbaselibrary.camera.PreprocessSurfaceTexture;
 import com.github.lkmio.androidavbaselibrary.utils.CameraUtils;
 
 import android.opengl.GLES20;
@@ -22,7 +20,6 @@ import java.util.Objects;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
 import com.github.lkmio.androidavbaselibrary.watermark.WatermarkManager;
 
 public class LiveSource implements ILiveSource {
@@ -30,15 +27,15 @@ public class LiveSource implements ILiveSource {
 
     private static final long SLOW_CALLBACK_THRESHOLD_NS = 5_000_000L;
 
-    CopyOnWriteArrayList<FrameSink> mAudioFrameSinks = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<FrameSink> mAudioFrameSinks = new CopyOnWriteArrayList<>();
 
-    CopyOnWriteArrayList<FrameSink> mVideoFrameSinks = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<FrameSink> mVideoFrameSinks = new CopyOnWriteArrayList<>();
 
-    CopyOnWriteArrayList<PacketSink> mAudioPacketSinks = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<PacketSink> mAudioPacketSinks = new CopyOnWriteArrayList<>();
 
-    CopyOnWriteArrayList<PacketSink> mVideoPacketSinks = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<PacketSink> mVideoPacketSinks = new CopyOnWriteArrayList<>();
 
-    Map<StreamSink, Long> mStreamSinks = new ConcurrentHashMap<>();
+    private final Map<StreamSink, Long> mStreamSinks = new ConcurrentHashMap<>();
 
     private final Map<StreamSink, Boolean> mVideoKeyFrameDispatched = new ConcurrentHashMap<>();
 
@@ -98,7 +95,7 @@ public class LiveSource implements ILiveSource {
 
         private String mCameraId;
 
-        private int mVideoWith;
+        private int mVideoWidth;
 
         private int mVideoHeight;
 
@@ -133,8 +130,8 @@ public class LiveSource implements ILiveSource {
             return this;
         }
 
-        public Builder setVideoWith(int videoWith) {
-            mVideoWith = videoWith;
+        public Builder setVideoWidth(int videoWidth) {
+            mVideoWidth = videoWidth;
             return this;
         }
 
@@ -214,7 +211,7 @@ public class LiveSource implements ILiveSource {
             int rotation = 0;
             boolean mirrorX = false;
             boolean mirrorY = true;
-            int width = mVideoWith;
+            int width = mVideoWidth;
             int height = mVideoHeight;
 
             // 自动选择后置摄像头
@@ -239,7 +236,7 @@ public class LiveSource implements ILiveSource {
                 rotation = info.sensorOrientation;
 
                 int[] size = new int[2];
-                CameraUtils.resolveVideoSize(mContext, mCameraId, mVideoWith, mVideoHeight, size);
+                CameraUtils.resolveVideoSize(mContext, mCameraId, mVideoWidth, mVideoHeight, size);
                 width = size[0];
                 height = size[1];
             }
@@ -342,15 +339,21 @@ public class LiveSource implements ILiveSource {
                 return;
             }
             mStarted = false;
-            stopAudioWorkThread();
-            stopVideoWorkThread();
-            releaseAudioComponents();
-            releaseVideoComponents();
-            mCachedTracks.clear();
-            mVideoKeyFrameDispatched.clear();
-            mPendingCameraOpenListener = null;
-            mStreamSinks.clear();
         }
+        stopAudioWorkThread();
+        stopVideoWorkThread();
+        // 通知所有 StreamSink 关闭
+        for (StreamSink sink : mStreamSinks.keySet()) {
+            try {
+                sink.close();
+            } catch (Exception e) {
+                Log.w(TAG, "Error closing StreamSink", e);
+            }
+        }
+        mCachedTracks.clear();
+        mVideoKeyFrameDispatched.clear();
+        mPendingCameraOpenListener = null;
+        mStreamSinks.clear();
     }
 
     @Override
@@ -818,20 +821,6 @@ public class LiveSource implements ILiveSource {
         }
     }
 
-    private void releaseAudioComponents() {
-        if (mAudioWorker != null) {
-            mAudioWorker.stop();
-            mAudioWorker = null;
-        }
-    }
-
-    private void releaseVideoComponents() {
-        if (mVideoWorker != null) {
-            mVideoWorker.stop();
-            mVideoWorker = null;
-        }
-    }
-
     private void dispatchAudioFrame(Frame frame) {
         for (FrameSink sink : mAudioFrameSinks) {
             long startNs = System.nanoTime();
@@ -918,7 +907,7 @@ public class LiveSource implements ILiveSource {
                 Bitmap bitmap = extractBitmap(frame);
                 callback.onSnapshot(bitmap);
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.w(TAG, "extractBitmap failed", e);
             }
         }
 

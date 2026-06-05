@@ -37,7 +37,7 @@ public final class AsyncStreamPacketDispatcher {
         }
 
         Packet pooledPacket = PacketPools.obtainVideoPacket(packet.isVideoKeyFrame());
-        if (packet.codec != AVCodec.H264) {
+        if (!packet.codec.isVideo()) {
             pooledPacket = PacketPools.obtainAudioPacket();
         }
 

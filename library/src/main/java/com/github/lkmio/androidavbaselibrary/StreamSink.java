@@ -19,4 +19,6 @@ public interface StreamSink {
     void writeHeader();
 
     int trackSize();
+
+    void close();
 }

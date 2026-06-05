@@ -19,7 +19,7 @@ public class G711Encoder implements AudioEncoder {
     private final Packet mReusablePacket = new Packet();
 
     private byte[] mOutputData;
-    
+
     private ByteBuffer mOutputDataBuffer;
 
     public G711Encoder(AVCodec codec) {
@@ -39,7 +39,7 @@ public class G711Encoder implements AudioEncoder {
         if (AVCodec.G711A == mCodec) {
             G711.encodeA(pcmData, offset, size, mOutputData, 0);
         } else if (AVCodec.G711U == mCodec) {
-            //G711.encodeU(pcmData,offset,size,bytes,0);
+            G711.encodeU(pcmData, offset, size, mOutputData, 0);
         }
 
         mOutputDataBuffer.position(0);

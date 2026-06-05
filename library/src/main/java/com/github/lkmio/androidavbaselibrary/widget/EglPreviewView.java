@@ -8,17 +8,20 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import com.github.lkmio.androidavbaselibrary.Frame;
 import com.github.lkmio.androidavbaselibrary.FrameSink;
 import com.github.lkmio.androidavbaselibrary.egl.EglBase;
-import com.github.lkmio.androidavbaselibrary.fitler.Simple2DDrawer;
+import com.github.lkmio.androidavbaselibrary.filter.Simple2DDrawer;
 
 import java.util.concurrent.CountDownLatch;
 
 public class EglPreviewView extends SurfaceView implements SurfaceHolder.Callback, Handler.Callback, FrameSink {
+
+    private static final String TAG = "EglPreviewView";
 
     public enum ScaleType {
         FIT_CENTER,
@@ -166,7 +169,7 @@ public class EglPreviewView extends SurfaceView implements SurfaceHolder.Callbac
         try {
             latch.await(); // 等待 GL 线程回执
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Log.w(TAG, "await interrupted", e);
         }
     }
 
@@ -185,7 +188,7 @@ public class EglPreviewView extends SurfaceView implements SurfaceHolder.Callbac
                             mDrawer = null;
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        Log.w(TAG, "release drawer on MSG_INIT failed", e);
                     }
                     mEglBase.releaseSurface();
                     mEglBase.release();
@@ -261,7 +264,7 @@ public class EglPreviewView extends SurfaceView implements SurfaceHolder.Callbac
                             mDrawer = null;
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        Log.w(TAG, "release drawer on MSG_RELEASE failed", e);
                     }
                     mEglBase.releaseSurface();
                     mEglBase.release();
