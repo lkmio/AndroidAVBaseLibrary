@@ -47,7 +47,7 @@ public class G711Encoder implements AudioEncoder {
         mReusablePacket.data = mOutputDataBuffer;
         mReusablePacket.codec = mCodec;
         mReusablePacket.presentationTimeUs = ptsUs;
-        mReusablePacket.duration = 8000 * 2 / size;
+        mReusablePacket.duration = (int) (1000 / (8000.0 * 2 / size));
         mReusablePacket.flags = 0;
         return mReusablePacket;
     }
