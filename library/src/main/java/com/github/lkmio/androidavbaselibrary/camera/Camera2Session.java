@@ -17,12 +17,18 @@ import android.view.Surface;
 
 import androidx.annotation.NonNull;
 
+import android.hardware.camera2.TotalCaptureResult;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.UUID;
 
 public class Camera2Session {
 
     private static final String TAG = "Camera2Session";
+
+    private static Field sResultsField;
+    private static Method sCloseMethod;
 
     private final Context mContext;
     private final String mSessionId;
@@ -160,6 +166,41 @@ public class Camera2Session {
         return mCameraThread != null || mCameraDevice != null;
     }
 
+    static void recycle(TotalCaptureResult tcr) {
+        try {
+            if (sResultsField == null) {
+                sResultsField = tcr.getClass().getSuperclass().getDeclaredField("mResults");
+                sResultsField.setAccessible(true);
+            }
+            if (sCloseMethod == null) {
+                Class<?> aClass = Class.forName("android.hardware.camera2.impl.CameraMetadataNative");
+                Method[] declaredMethods = aClass.getDeclaredMethods();
+
+                Method close = null;
+                Method finalize = null;
+                for (Method m : declaredMethods) {
+                    if (m.getName().contains("close")) {
+                        close = m;
+                        break;
+                    } else if (m.getName().contains("finalize")) {
+                        finalize = m;
+                    }
+                }
+
+                sCloseMethod = close == null ? finalize : close;
+                if (sCloseMethod == null) {
+                    return;
+                }
+
+                sCloseMethod.setAccessible(true);
+
+            }
+            sCloseMethod.invoke(sResultsField.get(tcr));
+        } catch (Exception e) {
+            // Ignore on devices where reflection is blocked or fields are changed
+        }
+    }
+
     private final CameraDevice.StateCallback mDeviceStateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(@NonNull CameraDevice camera) {
@@ -221,7 +262,13 @@ public class Camera2Session {
                                 }
                             }
                         }
-                        mCaptureSession.setRepeatingRequest(previewRequestBuilder.build(), null, mCameraHandler);
+                        mCaptureSession.setRepeatingRequest(previewRequestBuilder.build(), new CameraCaptureSession.CaptureCallback() {
+                            @Override
+                            public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+                                super.onCaptureCompleted(session, request, result);
+                                recycle(result);
+                            }
+                        }, mCameraHandler);
                     } catch (CameraAccessException e) {
                         Log.e(TAG, "Failed to start repeating request", e);
                     }
