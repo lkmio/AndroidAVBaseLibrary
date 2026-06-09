@@ -324,10 +324,11 @@ public class Camera2Session {
             mCameraThread.quitSafely();
             try {
                 mCameraThread.join(500);
-                mCameraThread = null;
-                mCameraHandler = null;
             } catch (InterruptedException e) {
                 Log.e(TAG, "Failed to stop background thread", e);
+            } finally {
+                mCameraThread = null;
+                mCameraHandler = null;
             }
         }
     }

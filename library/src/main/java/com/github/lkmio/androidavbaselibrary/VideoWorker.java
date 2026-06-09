@@ -312,7 +312,9 @@ public class VideoWorker implements PreprocessSurfaceTexture.OnFrameAvailableLis
                     try {
                         mLock.wait();
                     } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
+                        if (!mRunning) {
+                            Thread.currentThread().interrupt();
+                        }
                     }
                 }
                 continue;
@@ -328,7 +330,9 @@ public class VideoWorker implements PreprocessSurfaceTexture.OnFrameAvailableLis
                     try {
                         mLock.wait(300);
                     } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
+                        if (!mRunning) {
+                            Thread.currentThread().interrupt();
+                        }
                     }
                 }
                 continue;
@@ -347,7 +351,9 @@ public class VideoWorker implements PreprocessSurfaceTexture.OnFrameAvailableLis
                     try {
                         mLock.wait();
                     } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
+                        if (!mRunning) {
+                            Thread.currentThread().interrupt();
+                        }
                     }
                 }
                 continue;
@@ -405,9 +411,15 @@ public class VideoWorker implements PreprocessSurfaceTexture.OnFrameAvailableLis
 
                 packet.presentationTimeUs = presentationTimeUs;
                 packet.flags = bufferInfo.flags;
-                packet.duration = deltaUs >= 0
-                        ? (int) Math.max(1L, Math.round(deltaUs / 1000.0))
-                        : 0;
+                
+                int defaultDurationMs = mConfig.fps > 0 ? 1000 / mConfig.fps : 33;
+                if (deltaUs < 0) {
+                    packet.duration = 0;
+                } else if (deltaUs > 1000000) { // > 1 second jump
+                    packet.duration = defaultDurationMs;
+                } else {
+                    packet.duration = (int) Math.max(1L, Math.round(deltaUs / 1000.0));
+                }
                 mOutputCallback.onPacket(packet);
             }
             mPreprocessSurfaceTexture.returnFrame(textureFrame);
@@ -474,6 +486,10 @@ public class VideoWorker implements PreprocessSurfaceTexture.OnFrameAvailableLis
             }
             mCameraStartFailed = true;
             Log.e("VideoWorker", "Failed to start camera session immediately.");
+            if (mCamera2Session != null) {
+                mCamera2Session.stop();
+                mCamera2Session = null;
+            }
             if (mPendingCameraOpenListener != null) {
                 mPendingCameraOpenListener.onCameraOpened(false);
             }
