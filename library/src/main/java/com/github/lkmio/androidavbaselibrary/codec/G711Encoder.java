@@ -42,6 +42,8 @@ public class G711Encoder implements AudioEncoder {
             G711.encodeU(pcmData, offset, size, mOutputData, 0);
         }
 
+        mOutputDataBuffer.clear();
+        mOutputDataBuffer.put(mOutputData, 0, outputSize);
         mOutputDataBuffer.position(0);
         mOutputDataBuffer.limit(outputSize);
         mReusablePacket.data = mOutputDataBuffer;
@@ -77,7 +79,7 @@ public class G711Encoder implements AudioEncoder {
     private void ensureOutputBufferCapacity(int size) {
         if (mOutputData == null || mOutputData.length < size) {
             mOutputData = new byte[size];
-            mOutputDataBuffer = ByteBuffer.wrap(mOutputData);
+            mOutputDataBuffer = ByteBuffer.allocateDirect(size);
         }
     }
 }
