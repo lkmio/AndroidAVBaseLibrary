@@ -18,6 +18,7 @@ import android.view.Surface;
 import androidx.annotation.NonNull;
 
 import android.hardware.camera2.TotalCaptureResult;
+import android.util.Range;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -44,6 +45,8 @@ public class Camera2Session {
     // For YUV output
     private ImageReader mImageReader;
     private OnImageAvailableListener mOnImageAvailableListener;
+
+    private int mFps = 25;
 
     public interface OnCameraOpenListener {
         void onCameraOpened(boolean success);
@@ -79,11 +82,12 @@ public class Camera2Session {
      * Starts camera capture outputting to a Surface (for GPU processing).
      * @return true if camera opening request is successfully dispatched.
      */
-    public boolean start(String cameraId, Surface surface) {
+    public boolean start(String cameraId, Surface surface, int fps) {
         if (isSessionActive()) {
             Log.w(TAG, "Session already started.");
             return false;
         }
+        this.mFps = fps;
         this.mTargetSurface = surface;
         this.mCameraId = cameraId;
         return openCamera(cameraId);
@@ -93,11 +97,12 @@ public class Camera2Session {
      * Starts camera capture outputting raw YUV data (for CPU processing).
      * @return true if camera opening request is successfully dispatched.
      */
-    public boolean start(String cameraId, int width, int height, OnImageAvailableListener listener) {
+    public boolean start(String cameraId, int width, int height, int fps, OnImageAvailableListener listener) {
         if (isSessionActive()) {
             Log.w(TAG, "Session already started.");
             return false;
         }
+        this.mFps = fps;
         this.mOnImageAvailableListener = listener;
 
         startBackgroundThread(); // Start thread early to get a handler for the listener
@@ -259,6 +264,30 @@ public class Camera2Session {
                                         previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
                                         break;
                                     }
+                                }
+                            }
+
+                            Range<Integer>[] fpsRanges = characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
+                            if (fpsRanges != null && mFps > 0) {
+                                Range<Integer> bestRange = null;
+                                for (Range<Integer> range : fpsRanges) {
+                                    if (range.getUpper() == mFps) {
+                                        if (bestRange == null || range.getLower() < bestRange.getLower()) {
+                                            bestRange = range;
+                                        }
+                                    }
+                                }
+                                if (bestRange == null) {
+                                    for (Range<Integer> range : fpsRanges) {
+                                        if (range.getUpper() >= mFps) {
+                                            if (bestRange == null || range.getUpper() < bestRange.getUpper()) {
+                                                bestRange = range;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (bestRange != null) {
+                                    previewRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, bestRange);
                                 }
                             }
                         }

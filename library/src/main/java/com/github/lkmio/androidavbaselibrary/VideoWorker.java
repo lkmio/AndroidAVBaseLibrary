@@ -466,7 +466,7 @@ public class VideoWorker implements PreprocessSurfaceTexture.OnFrameAvailableLis
             mCameraOpening = true;
         }
         Log.i("VideoWorker", "Start camera session, sessionId: " + mCamera2Session.getSessionId());
-        boolean startSuccess = mCamera2Session.start(mConfig.cameraId, mPreprocessSurfaceTexture.getInputSurface());
+        boolean startSuccess = mCamera2Session.start(mConfig.cameraId, mPreprocessSurfaceTexture.getInputSurface(), mConfig.fps);
         if (!startSuccess) {
             synchronized (mLock) {
                 mCameraOpening = false;
