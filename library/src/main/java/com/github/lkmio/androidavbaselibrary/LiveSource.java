@@ -121,6 +121,8 @@ public class LiveSource implements ILiveSource {
 
         private int mAudioSampleRate = 8000;
 
+        private int mAudioFrameSize = 0;
+
         private Builder(Context context) {
             mContext = Objects.requireNonNull(context, "context is required");
         }
@@ -199,12 +201,17 @@ public class LiveSource implements ILiveSource {
             return this;
         }
 
+        public Builder setAudioFrameSize(int audioFrameSize) {
+            mAudioFrameSize = audioFrameSize;
+            return this;
+        }
+
         public LiveSource build() {
             return new LiveSource(this);
         }
 
         private AudioWorker.Config buildAudioConfig() {
-            return new AudioWorker.Config(mContext, mAudioSource, mAudioSampleRate, mAudioChannels);
+            return new AudioWorker.Config(mContext, mAudioSource, mAudioSampleRate, mAudioChannels, mAudioFrameSize);
         }
 
         private VideoWorker.Config buildVideoConfig() {

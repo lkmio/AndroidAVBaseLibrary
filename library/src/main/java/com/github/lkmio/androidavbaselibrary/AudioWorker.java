@@ -23,12 +23,14 @@ public class AudioWorker {
         public final int audioSource;
         public final int sampleRate;
         public final int channelCount;
+        public final int audioFrameSize;
 
-        public Config(Context context, int audioSource, int sampleRate, int channelCount) {
+        public Config(Context context, int audioSource, int sampleRate, int channelCount, int audioFrameSize) {
             this.context = context;
             this.audioSource = audioSource;
             this.sampleRate = sampleRate;
             this.channelCount = channelCount;
+            this.audioFrameSize = audioFrameSize;
         }
     }
 
@@ -188,8 +190,9 @@ public class AudioWorker {
             }
 
             // 创建读取PCM的Buffer
-            if (readBuffer == null || readBuffer.length < mAudioSample.getBufferSizeInBytes()) {
-                readBuffer = new byte[mAudioSample.getBufferSizeInBytes()];
+            int frameSize = mConfig.audioFrameSize >= 320 ? mConfig.audioFrameSize : mAudioSample.getBufferSizeInBytes();
+            if (readBuffer == null || readBuffer.length < frameSize) {
+                readBuffer = new byte[frameSize];
             }
 
             // 读取音频数据
