@@ -674,6 +674,13 @@ public class LiveSource implements ILiveSource {
         mAudioCodecs = audioCodecs.toArray(new AVCodec[0]);
         mVideoCodecs = videoCodecs.toArray(new AVCodec[0]);
 
+        if (mAudioCodecs.length == 0) {
+            mCachedTracks.remove(AVMediaType.AV_MEDIA_TYPE_AUDIO);
+        }
+        if (mVideoCodecs.length == 0) {
+            mCachedTracks.remove(AVMediaType.AV_MEDIA_TYPE_VIDEO);
+        }
+
         start();
         wakeupAudioWorkThread();
         wakeupVideoWorkThread();
