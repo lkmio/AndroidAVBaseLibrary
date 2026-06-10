@@ -298,7 +298,7 @@ public class Camera2Session {
                                 recycle(result);
                             }
                         }, mCameraHandler);
-                    } catch (CameraAccessException e) {
+                    } catch (CameraAccessException | IllegalStateException | IllegalArgumentException e) {
                         Log.e(TAG, "Failed to start repeating request", e);
                     }
                 }
@@ -308,7 +308,7 @@ public class Camera2Session {
                     Log.e(TAG, "Failed to configure camera capture session.");
                 }
             }, mCameraHandler);
-        } catch (CameraAccessException e) {
+        } catch (CameraAccessException | IllegalStateException | IllegalArgumentException e) {
             Log.e(TAG, "Failed to create capture session", e);
         }
     }
