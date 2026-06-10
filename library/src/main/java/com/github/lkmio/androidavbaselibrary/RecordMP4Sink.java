@@ -18,7 +18,7 @@ public class RecordMP4Sink extends StreamSinkImpl {
 
     private final OnSegmentHandler mHandler;
 
-    private final int mSegmentDurationSeconds;
+    private int mSegmentDurationSeconds;
 
     private MP4Muxer mMuxer;
 
@@ -47,7 +47,16 @@ public class RecordMP4Sink extends StreamSinkImpl {
         }
 
         mHandler = handler;
-        mSegmentDurationSeconds = Math.max(1, segmentDurationSeconds);
+        mSegmentDurationSeconds = Math.max(60, segmentDurationSeconds);
+    }
+
+    public void setSegmentDurationSeconds(int seconds) {
+        synchronized (mLock) {
+            mSegmentDurationSeconds = Math.max(60, seconds);
+            if (mMuxer != null && mMuxer.isStarted() && mMuxer.getDurationSeconds() >= mSegmentDurationSeconds) {
+                mWaitingNextVideoBoundary = true;
+            }
+        }
     }
 
     @Override
