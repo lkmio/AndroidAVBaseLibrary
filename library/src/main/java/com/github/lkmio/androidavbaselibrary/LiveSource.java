@@ -39,7 +39,7 @@ public class LiveSource implements ILiveSource {
 
     private final Map<StreamSink, Boolean> mVideoKeyFrameDispatched = new ConcurrentHashMap<>();
 
-    private final Map<AVMediaType, Track> mCachedTracks = new ConcurrentHashMap<>();
+    private final Map<AVCodec, Track> mCachedTracks = new ConcurrentHashMap<>();
 
     private final Object mStreamSinkLock = new Object();
 
@@ -84,6 +84,17 @@ public class LiveSource implements ILiveSource {
             }
         }
         return AVCodec.NONE;
+    }
+
+    public void setVideoCodec(AVCodec codec) {
+        if (mVideoConfig != null) {
+            if (codec == AVCodec.H265) {
+                mVideoConfig.videoMimeType = android.media.MediaFormat.MIMETYPE_VIDEO_HEVC;
+            } else {
+                mVideoConfig.videoMimeType = android.media.MediaFormat.MIMETYPE_VIDEO_AVC;
+            }
+            mVideoConfig.videoCodecName = null;
+        }
     }
 
     public static Builder builder(Context context) {
@@ -457,7 +468,9 @@ public class LiveSource implements ILiveSource {
         List<Track> cachedTracks = new ArrayList<>(mCachedTracks.values());
         if (added) {
             for (Track track : cachedTracks) {
-                sink.onTrack(track);
+                if (shouldDispatchTrack(sink, track)) {
+                    sink.onTrack(track);
+                }
                 if (sink.isCompleted()) {
                     break;
                 }
@@ -682,10 +695,10 @@ public class LiveSource implements ILiveSource {
         mVideoCodecs = videoCodecs.toArray(new AVCodec[0]);
 
         if (mAudioCodecs.length == 0) {
-            mCachedTracks.remove(AVMediaType.AV_MEDIA_TYPE_AUDIO);
+            mCachedTracks.entrySet().removeIf(entry -> entry.getValue().mediaType == AVMediaType.AV_MEDIA_TYPE_AUDIO);
         }
         if (mVideoCodecs.length == 0) {
-            mCachedTracks.remove(AVMediaType.AV_MEDIA_TYPE_VIDEO);
+            mCachedTracks.entrySet().removeIf(entry -> entry.getValue().mediaType == AVMediaType.AV_MEDIA_TYPE_VIDEO);
         }
 
         start();
@@ -958,12 +971,35 @@ public class LiveSource implements ILiveSource {
         }
     }
 
+    private boolean shouldDispatchTrack(StreamSink sink, Track track) {
+        if (track.mediaType == AVMediaType.AV_MEDIA_TYPE_AUDIO) {
+            PacketSink audioSink = sink.getAudioSink();
+            if (audioSink != null) {
+                AVCodec specifyAudioCodec = audioSink.getCodec();
+                if (specifyAudioCodec != null && specifyAudioCodec != AVCodec.NONE && specifyAudioCodec != track.codec) {
+                    return false;
+                }
+            }
+        } else if (track.mediaType == AVMediaType.AV_MEDIA_TYPE_VIDEO) {
+            PacketSink videoSink = sink.getVideoSink();
+            if (videoSink != null) {
+                AVCodec specifyVideoCodec = videoSink.getCodec();
+                if (specifyVideoCodec != null && specifyVideoCodec != AVCodec.NONE && specifyVideoCodec != track.codec) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     private void dispatchTrack(Track track) {
-        mCachedTracks.put(track.mediaType, track);
+        mCachedTracks.put(track.codec, track);
         for (StreamSink sink : mStreamSinks.keySet()) {
-            long startNs = System.nanoTime();
-            sink.onTrack(track);
-            logSlowCallback("track", sink, startNs);
+            if (shouldDispatchTrack(sink, track)) {
+                long startNs = System.nanoTime();
+                sink.onTrack(track);
+                logSlowCallback("track", sink, startNs);
+            }
         }
     }
 
