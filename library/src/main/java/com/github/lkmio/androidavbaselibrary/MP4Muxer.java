@@ -52,11 +52,11 @@ public class MP4Muxer {
         }
     }
 
-    public void writeVideoSampleData(ByteBuffer byteBuffer, MediaCodec.BufferInfo bufferInfo) {
+    public void writeVideoSampleData(ByteBuffer byteBuffer, MediaCodec.BufferInfo bufferInfo) throws Exception {
         writeSampleData(true, byteBuffer, bufferInfo);
     }
 
-    public void writeAudioSampleData(ByteBuffer byteBuffer, MediaCodec.BufferInfo bufferInfo) {
+    public void writeAudioSampleData(ByteBuffer byteBuffer, MediaCodec.BufferInfo bufferInfo) throws Exception {
         writeSampleData(false, byteBuffer, bufferInfo);
     }
 
@@ -109,7 +109,7 @@ public class MP4Muxer {
         }
     }
 
-    private void writeSampleData(boolean isVideo, ByteBuffer byteBuffer, MediaCodec.BufferInfo bufferInfo) {
+    private void writeSampleData(boolean isVideo, ByteBuffer byteBuffer, MediaCodec.BufferInfo bufferInfo) throws Exception {
         synchronized (mLock) {
             checkReleased();
             if (byteBuffer == null || bufferInfo == null || bufferInfo.size <= 0) {
@@ -132,6 +132,7 @@ public class MP4Muxer {
                 updateDurationLocked(isVideo, bufferInfo.presentationTimeUs);
             } catch (Exception e) {
                 Log.w(TAG, "writeSampleData failed, track=" + trackIndex, e);
+                throw e;
             }
         }
     }

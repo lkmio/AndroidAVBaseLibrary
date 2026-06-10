@@ -38,6 +38,8 @@ public class RecordMP4Sink extends StreamSinkImpl {
         String allocPath();
 
         void onSegment(String path);
+
+        void onError(Exception e);
     }
 
     public RecordMP4Sink(AVCodec videoCodec, OnSegmentHandler handler, int segmentDurationSeconds) {
@@ -72,11 +74,19 @@ public class RecordMP4Sink extends StreamSinkImpl {
             data.position(0);
             data.limit(packet.data.limit());
 
-            if (packet.codec == mSpecifyVideoCodec) {
-                mMuxer.writeVideoSampleData(data, bufferInfo);
-            } else if (packet.codec == AVCodec.AAC) {
-                mMuxer.writeAudioSampleData(data, bufferInfo);
-            } else {
+            try {
+                if (packet.codec == mSpecifyVideoCodec) {
+                    mMuxer.writeVideoSampleData(data, bufferInfo);
+                } else if (packet.codec == AVCodec.AAC) {
+                    mMuxer.writeAudioSampleData(data, bufferInfo);
+                } else {
+                    return;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "write sample data failed", e);
+                mHandler.onError(e);
+                closeCurrentSegmentLocked();
+                mWaitingNextVideoBoundary = true;
                 return;
             }
 
