@@ -75,6 +75,7 @@ public class PreprocessSurfaceTexture implements SurfaceTexture.OnFrameAvailable
     private long mLastFrameTimestampNs = -1L;
     private long mLastBrightnessCheckTime = 0; // 记录上次检测亮度的时间
     private final AtomicLong mDroppedFrameCount = new AtomicLong();
+    private long mEglContextId;
 
     private CameraEffectFilter mEffectFilter;
 
@@ -183,6 +184,7 @@ public class PreprocessSurfaceTexture implements SurfaceTexture.OnFrameAvailable
         Runnable initTask = () -> {
             mRootEglBase = EglBase.create(null, EglBase.CONFIG_RECORDABLE);
             mWorkerEglBase = EglBase.create(mRootEglBase.getEglBaseContext(), EglBase.CONFIG_RECORDABLE);
+            mEglContextId = System.nanoTime();
             mWorkerEglBase.createPbufferSurface(1, 1);
             mWorkerEglBase.makeCurrent();
 
@@ -453,6 +455,7 @@ public class PreprocessSurfaceTexture implements SurfaceTexture.OnFrameAvailable
         renderFrame.id = ++mFrameIdGenerator;
         renderFrame.timestamp = timestamp;
         renderFrame.eglContext = mRootEglBase != null ? mRootEglBase.getEglBaseContext() : null;
+        renderFrame.eglContextId = mEglContextId;
         mReadyQueue.offer(renderFrame);
 
         if (mOnFrameAvailableListener != null) {

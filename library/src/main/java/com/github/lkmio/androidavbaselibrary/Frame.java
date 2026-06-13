@@ -15,4 +15,5 @@ public class Frame {
 
     public int height;
     public EglBase.Context eglContext;
+    public long eglContextId;
 }

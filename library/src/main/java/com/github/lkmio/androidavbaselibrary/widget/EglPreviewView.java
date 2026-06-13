@@ -41,6 +41,7 @@ public class EglPreviewView extends SurfaceView implements SurfaceHolder.Callbac
     // EGL 资源
     private EglBase mEglBase;
     private EglBase.Context mSharedContext;
+    private long mSharedContextId;
     private Simple2DDrawer mDrawer;
     private SurfaceHolder mPendingHolder;
     private boolean mDrawerInitialized = false;
@@ -66,8 +67,6 @@ public class EglPreviewView extends SurfaceView implements SurfaceHolder.Callbac
 
     private void initView() {
         getHolder().addCallback(this);
-        // 让 SurfaceView 支持透明/半透明，且不在最底层
-        getHolder().setFormat(PixelFormat.RGBA_8888);
         Matrix.setIdentityM(mMvpMatrix, 0);
 
         // 启动专属渲染线程
@@ -86,17 +85,13 @@ public class EglPreviewView extends SurfaceView implements SurfaceHolder.Callbac
     /**
      * 1. 业务层调用：初始化并传入共享上下文
      */
-    public void init(EglBase.Context sharedContext) {
-        if (mRenderHandler == null) {
-            return;
-        }
-        // 如果正在使用同一个 context，无需重复初始化
-        if (mInitRequested && mSharedContext == sharedContext) {
-            return;
-        }
-        mInitRequested = true;
+    public void init(EglBase.Context sharedContext, long sharedContextId) {
         mSharedContext = sharedContext;
-        mRenderHandler.sendEmptyMessage(MSG_INIT);
+        mSharedContextId = sharedContextId;
+        mInitRequested = true;
+        if (mRenderHandler != null) {
+            mRenderHandler.sendEmptyMessage(MSG_INIT);
+        }
     }
 
     /**
@@ -123,26 +118,16 @@ public class EglPreviewView extends SurfaceView implements SurfaceHolder.Callbac
         }
     }
 
-    private boolean isSameContext(EglBase.Context c1, EglBase.Context c2) {
-        if (c1 == c2) {
-            return true;
-        }
-        if (c1 == null || c2 == null) {
-            return false;
-        }
-        return c1.getNativeEglContext() == c2.getNativeEglContext();
-    }
-
     @Override
     public void onFrame(Frame frame) {
         if (frame == null) {
             return;
         }
         if (!mInitRequested) {
-            init(frame.eglContext);
-        } else if (!isSameContext(mSharedContext, frame.eglContext)) {
+            init(frame.eglContext, frame.eglContextId);
+        } else if (mSharedContextId != frame.eglContextId) {
             // EGL Context has changed (e.g. camera restarted), re-initialize
-            init(frame.eglContext);
+            init(frame.eglContext, frame.eglContextId);
         }
         requestRender(frame.textureId, frame.width, frame.height);
     }
@@ -233,6 +218,7 @@ public class EglPreviewView extends SurfaceView implements SurfaceHolder.Callbac
                 }
 
                 if (mEglBase != null && mEglBase.hasSurface()) {
+                    long t1 = System.currentTimeMillis();
                     GLES20.glViewport(0, 0, mViewWidth, mViewHeight);
                     GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
                     GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
@@ -245,34 +231,36 @@ public class EglPreviewView extends SurfaceView implements SurfaceHolder.Callbac
                 break;
 
             case MSG_SURFACE_DESTROYED:
-                if (mEglBase != null) {
-                    mEglBase.makeCurrent();
-                    // 不要释放 mDrawer，因为 EGL Context 并没有销毁，还可以继续使用
-                    mEglBase.releaseSurface(); // 仅仅释放 EGL 窗口表面
-                }
+                releaseEglContext();
                 mPendingHolder = null;
                 CountDownLatch latch = (CountDownLatch) msg.obj;
                 latch.countDown(); // 通知主线程：我释完了，你可以把物理 Surface 炸掉了
                 break;
 
             case MSG_RELEASE:
-                if (mEglBase != null) {
-                    try {
-                        mEglBase.makeCurrent();
-                        if (mDrawer != null) {
-                            mDrawer.release();
-                            mDrawer = null;
-                        }
-                    } catch (Exception e) {
-                        Log.w(TAG, "release drawer on MSG_RELEASE failed", e);
-                    }
-                    mEglBase.releaseSurface();
-                    mEglBase.release();
-                    mEglBase = null;
-                }
+                releaseEglContext();
                 break;
         }
         return true;
+    }
+
+    private void releaseEglContext() {
+        if (mEglBase != null) {
+            try {
+                mEglBase.makeCurrent();
+                if (mDrawer != null) {
+                    mDrawer.release();
+                    mDrawer = null;
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "makeCurrent/release drawer on destroy failed", e);
+            }
+            mEglBase.releaseSurface();
+            mEglBase.release();
+            mEglBase = null;
+        }
+        mInitRequested = false;
+        mDrawerInitialized = false;
     }
 
     private void updateMatrix() {
