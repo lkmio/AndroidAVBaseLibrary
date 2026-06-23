@@ -414,6 +414,11 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }, "FastStartThread").start();
             }
+
+            @Override
+            public void onError(Exception e) {
+                Log.e(TAG, "RecordMP4Sink error: " + e.getMessage(), e);
+            }
         }, 3600);
         recordSink.setPacketDispatcher(new AsyncStreamPacketDispatcher(
                 "RecordMP4Sink-PacketDispatcher",
